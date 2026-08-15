@@ -1,6 +1,6 @@
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmTarget } from "webm-muxer";
-import { GIFEncoder, quantize, applyPalette } from "gifenc";
+import { GIFEncoder, quantize, applyPalette, prequantize } from "gifenc";
 import JSZip from "jszip";
 import type { ExportSettings, QualityLevel } from "@/types/encoder";
 
@@ -334,6 +334,15 @@ class GifRenderer implements Renderer {
     const rgba = imageData.data;
 
     const format = this.transparent ? "rgba4444" : "rgb565";
+
+    if (this.transparent) {
+      // GIF only supports 1-bit alpha. Snap every pixel's alpha to 0/255
+      // BEFORE quantization (the ffmpeg equivalent of
+      // paletteuse=alpha_threshold=128) so anti-aliased (semi-transparent)
+      // edge pixels can never become a translucent palette color.
+      prequantize(rgba, { oneBitAlpha: 127 });
+    }
+
     const palette = quantize(rgba, this.maxColors, {
       format,
       ...(this.transparent ? { clearAlpha: true, clearAlphaColor: 0 } : {}),
@@ -343,13 +352,28 @@ class GifRenderer implements Renderer {
     let transparent = false;
     let transparentIndex = 0;
     if (this.transparent) {
+      // Find a fully transparent palette entry (the reserved transparency
+      // slot). gifenc's merge step can skip alpha, so guarantee one exists.
+      transparentIndex = -1;
       for (let i = 0; i < palette.length; i++) {
         const entry = palette[i];
         if (entry.length === 4 && entry[3] === 0) {
-          transparent = true;
           transparentIndex = i;
           break;
         }
+      }
+      if (transparentIndex < 0) {
+        palette.push([0, 0, 0, 0]);
+        transparentIndex = palette.length - 1;
+      }
+      transparent = true;
+
+      // Force every fully-transparent source pixel to the reserved index.
+      // Nearest-color matching alone can snap them to an opaque entry (RGB
+      // distance beats alpha distance), which is what caused the dark halo.
+      const view = new Uint32Array(rgba.buffer, rgba.byteOffset, rgba.byteLength >>> 2);
+      for (let i = 0; i < view.length; i++) {
+        if (((view[i] >>> 24) & 0xff) === 0) index[i] = transparentIndex;
       }
     }
 
