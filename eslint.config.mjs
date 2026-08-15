@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party assets (html-to-image UMD build served to the sandbox).
+    "public/**",
   ]),
 ]);
 
