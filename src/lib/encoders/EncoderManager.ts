@@ -52,7 +52,7 @@ export class EncoderManager {
           );
         }
         const webCodecs = new WebCodecsMp4Encoder();
-        if (await webCodecs.isSupported()) {
+        if (await webCodecs.isSupported(settings)) {
           return { adapter: webCodecs, warnings };
         }
         warnings.push(
@@ -74,7 +74,7 @@ export class EncoderManager {
           );
         }
         const webCodecs = new WebCodecsWebmEncoder();
-        if (await webCodecs.isSupported()) {
+        if (await webCodecs.isSupported(settings)) {
           return { adapter: webCodecs, warnings };
         }
         const mediaRecorder = new MediaRecorderEncoder();

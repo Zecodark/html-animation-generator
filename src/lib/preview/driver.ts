@@ -294,11 +294,14 @@ export function buildDriverSource(): string {
       }
       await nextNativeTick();
       
-      // Use higher pixelRatio for better quality
-      // - window.devicePixelRatio gives native display DPI (usually 1, 2, or 3)
-      // - Clamp to max 3 to avoid excessive memory usage
+      // Use higher pixelRatio for better quality, but bound the total capture
+      // pixels so large (4K) exports don't allocate enormous canvases.
       var devicePixelRatio = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
       var targetPixelRatio = Math.min(devicePixelRatio, 3);
+      var captureBudget = 4096 * 2160;
+      if (w * h * targetPixelRatio * targetPixelRatio > captureBudget) {
+        targetPixelRatio = Math.max(1, Math.sqrt(captureBudget / (w * h)));
+      }
       
       var opts = {
         width: w,

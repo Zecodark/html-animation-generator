@@ -52,8 +52,9 @@ export interface VideoEncoderAdapter {
   /** Stable human-readable name, e.g. "WebCodecs MP4 (H.264)". */
   name: string;
 
-  /** Whether the browser/session can realistically run this encoder. */
-  isSupported(): Promise<boolean>;
+  /** Whether the browser/session can realistically run this encoder. Settings
+   *  are passed so resolution-aware checks (e.g. H.264 level limits) work. */
+  isSupported(settings?: ExportSettings): Promise<boolean>;
 
   initialize(options: ExportSettings, onProgress?: ProgressDelegate): Promise<void>;
 

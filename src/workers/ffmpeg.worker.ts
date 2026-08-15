@@ -103,8 +103,30 @@ async function runFinalize(): Promise<Blob> {
     "yuv420p",
     "-movflags",
     "+faststart",
-    "output.mov",
   ];
+
+  // Respect the user's quality selection instead of libx264's lossy default CRF.
+  const crfByQuality: Record<string, number> = {
+    low: 23,
+    medium: 20,
+    high: 18,
+    "very-high": 15,
+  };
+  const crf = crfByQuality[settings.quality] ?? 18;
+  const width = settings.width;
+  const height = settings.height;
+  const pixels = width * height;
+  const bitrateKbps = Math.round((16_000_000 * (pixels / (1920 * 1080))) / 1000);
+
+  if (settings.format === "webm") {
+    args.push("-crf", String(crf), "-b:v", `${bitrateKbps}k`, "-deadline", "good", "-cpu-used", "4");
+  } else if (settings.format === "mov") {
+    args.push("-q:v", "5");
+  } else {
+    args.push("-crf", String(crf), "-preset", "medium");
+  }
+
+  args.push("output.mov");
 
   await ffmpeg.exec(args);
   const data = await ffmpeg.readFile("output.mov");

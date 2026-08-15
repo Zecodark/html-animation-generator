@@ -56,12 +56,12 @@ export class MediaRecorderEncoder implements VideoEncoderAdapter {
 
       const bitrate =
         settings.quality === "low"
-          ? 1_000_000
+          ? 2_000_000
           : settings.quality === "medium"
-            ? 2_500_000
+            ? 5_000_000
             : settings.quality === "high"
-              ? 5_000_000
-              : 10_000_000;
+              ? 9_000_000
+              : 14_000_000;
 
       this.stream = this.canvas.captureStream(settings.fps);
       this.recorder = new MediaRecorder(this.stream, {

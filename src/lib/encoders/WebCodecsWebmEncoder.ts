@@ -1,4 +1,5 @@
 import { WorkerEncoderAdapter } from "./workerAdapter";
+import type { ExportSettings } from "@/types/encoder";
 
 /**
  * WebM via WebCodecs (VP9 with VP8 fallback) muxed with webm-muxer inside a
@@ -17,10 +18,12 @@ export class WebCodecsWebmEncoder extends WorkerEncoderAdapter {
     return { kind: "webm" };
   }
 
-  override async isSupported(): Promise<boolean> {
+  override async isSupported(settings?: ExportSettings): Promise<boolean> {
     if (typeof Worker === "undefined" || typeof VideoEncoder === "undefined") {
       return false;
     }
+    const width = settings?.width ?? 1280;
+    const height = settings?.height ?? 720;
     try {
       for (const codec of [
         "vp09.00.10.08",
@@ -29,10 +32,10 @@ export class WebCodecsWebmEncoder extends WorkerEncoderAdapter {
       ]) {
         const support = await VideoEncoder.isConfigSupported({
           codec,
-          width: 1280,
-          height: 720,
-          bitrate: 4_000_000,
-          framerate: 30,
+          width,
+          height,
+          bitrate: 16_000_000,
+          framerate: settings?.fps ?? 30,
         });
         if (support.supported) return true;
       }

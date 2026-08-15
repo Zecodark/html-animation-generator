@@ -50,17 +50,30 @@ function calcBitrate(
   width: number,
   height: number
 ): number {
+  // Raised base bitrates so smooth gradients (glow / soft shadows / blur) do
+  // not band or block at 1080p-equivalent content.
   const base =
     quality === "low"
-      ? 2_000_000
+      ? 4_000_000
       : quality === "medium"
-        ? 4_000_000
+        ? 8_000_000
         : quality === "high"
-          ? 8_000_000
-          : 16_000_000;
+          ? 16_000_000
+          : 24_000_000;
   const pixels = width * height;
   return Math.round((base * pixels) / (1920 * 1080));
 }
+
+// H.264 profile candidates ordered by quality/capability. Level 5.1 is
+// required for 3840x2160 / 4096x2160 (Level 4.0 tops out at 1080p and causes
+// 4K exports to fail). Prefer High (64) over Main (4D) / Baseline (42).
+const H264_CODECS = [
+  "avc1.640033", // High 5.1  (4K capable)
+  "avc1.640032", // High 5.0
+  "avc1.640028", // High 4.0  (1080p)
+  "avc1.4D0028", // Main 4.0
+  "avc1.42E01E", // Baseline 3.0
+];
 
 function gifMaxColors(quality: QualityLevel): number {
   return quality === "low"
@@ -68,7 +81,7 @@ function gifMaxColors(quality: QualityLevel): number {
     : quality === "medium"
       ? 128
       : quality === "high"
-        ? 192
+        ? 256
         : 256;
 }
 
@@ -86,11 +99,14 @@ class Mp4Renderer implements Renderer {
   private fps: number;
   private keyframeInterval: number;
   private bg: string | null;
+  private quality: QualityLevel;
+  private codec = "";
 
   constructor(settings: ExportSettings) {
     this.width = settings.width;
     this.height = settings.height;
     this.fps = settings.fps;
+    this.quality = settings.quality;
     this.keyframeInterval = Math.max(1, Math.round(settings.fps));
     this.bg = settings.transparent ? null : settings.backgroundColor ?? "#000000";
   }
@@ -99,23 +115,36 @@ class Mp4Renderer implements Renderer {
     if (typeof VideoEncoder === "undefined") {
       throw new Error("WebCodecs VideoEncoder is not available in this browser");
     }
-    const codec = "avc1.42E01E";
     const { width, height, fps } = this;
-    const bitrate = calcBitrate("high", width, height);
+    const bitrate = calcBitrate(this.quality, width, height);
 
-    const config: VideoEncoderConfig = {
-      codec,
-      width,
-      height,
-      bitrate,
-      framerate: fps,
-      latencyMode: "quality",
-    };
-
-    const support = await VideoEncoder.isConfigSupported(config);
-    if (!support.supported) {
-      throw new Error("H.264 (avc1.42E01E) encoding is not supported here");
+    let codec = H264_CODECS[0];
+    let config: VideoEncoderConfig | null = null;
+    for (const candidate of H264_CODECS) {
+      const attempt: VideoEncoderConfig = {
+        codec: candidate,
+        width,
+        height,
+        bitrate,
+        framerate: fps,
+        latencyMode: "quality",
+      };
+      try {
+        const support = await VideoEncoder.isConfigSupported(attempt);
+        if (support.supported) {
+          codec = candidate;
+          config = attempt;
+          break;
+        }
+      } catch {
+        /* try next */
+      }
     }
+
+    if (!config) {
+      throw new Error("H.264 (avc1) encoding is not supported here");
+    }
+    this.codec = codec;
 
     this.muxer = new Muxer({
       target: new ArrayBufferTarget(),
@@ -138,12 +167,10 @@ class Mp4Renderer implements Renderer {
   async addFrame(bitmap: ImageBitmap, index: number, timestampMs: number) {
     if (!this.encoder || !this.muxer) throw new Error("MP4 renderer not initialized");
     const usPerFrame = Math.round(1e6 / this.fps);
-    let source: ImageBitmap | OffscreenCanvas = bitmap;
-
-    if (this.bg) {
-      const canvas = drawOnBackground(bitmap, this.width, this.height, this.bg);
-      source = canvas;
-    }
+    // Always re-render at the renderer's exact size. A HiDPI capture
+    // (pixelRatio > 1) produces a larger bitmap; feeding it straight to the
+    // encoder mismatches the configured resolution and breaks the stream.
+    const source = drawOnBackground(bitmap, this.width, this.height, this.bg);
 
     const frame = new VideoFrame(source, {
       timestamp: Math.round(timestampMs * 1000),
@@ -151,7 +178,7 @@ class Mp4Renderer implements Renderer {
     });
     this.encoder.encode(frame, { keyFrame: index % this.keyframeInterval === 0 });
     frame.close();
-    if (source !== bitmap) (source as OffscreenCanvas).width = 0;
+    (source as OffscreenCanvas).width = 0;
     bitmap.close();
   }
 
@@ -182,12 +209,14 @@ class WebmRenderer implements Renderer {
   private fps: number;
   private keyframeInterval: number;
   private bg: string | null;
+  private quality: QualityLevel;
   private codec = "";
 
   constructor(settings: ExportSettings) {
     this.width = settings.width;
     this.height = settings.height;
     this.fps = settings.fps;
+    this.quality = settings.quality;
     this.keyframeInterval = Math.max(1, Math.round(settings.fps));
     this.bg = settings.transparent ? null : settings.backgroundColor ?? "#000000";
   }
@@ -197,7 +226,7 @@ class WebmRenderer implements Renderer {
       throw new Error("WebCodecs VideoEncoder is not available in this browser");
     }
     const { width, height, fps } = this;
-    const bitrate = calcBitrate("high", width, height);
+    const bitrate = calcBitrate(this.quality, width, height);
 
     const candidates = ["vp09.00.10.08", "vp09.00.41.08", "vp8"];
     let config: VideoEncoderConfig | null = null;
@@ -208,6 +237,7 @@ class WebmRenderer implements Renderer {
         height,
         bitrate,
         framerate: fps,
+        latencyMode: "quality",
       };
       try {
         const support = await VideoEncoder.isConfigSupported(candidate);
@@ -245,11 +275,8 @@ class WebmRenderer implements Renderer {
   async addFrame(bitmap: ImageBitmap, index: number, timestampMs: number) {
     if (!this.encoder || !this.muxer) throw new Error("WebM renderer not initialized");
     const usPerFrame = Math.round(1e6 / this.fps);
-    let source: ImageBitmap | OffscreenCanvas = bitmap;
-
-    if (this.bg) {
-      source = drawOnBackground(bitmap, this.width, this.height, this.bg);
-    }
+    // Always re-render at the renderer's exact size (see MP4 renderer).
+    const source = drawOnBackground(bitmap, this.width, this.height, this.bg);
 
     const frame = new VideoFrame(source, {
       timestamp: Math.round(timestampMs * 1000),
@@ -257,7 +284,7 @@ class WebmRenderer implements Renderer {
     });
     this.encoder.encode(frame, { keyFrame: index % this.keyframeInterval === 0 });
     frame.close();
-    if (source !== bitmap) (source as OffscreenCanvas).width = 0;
+    (source as OffscreenCanvas).width = 0;
     bitmap.close();
   }
 
