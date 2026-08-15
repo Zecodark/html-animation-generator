@@ -148,12 +148,29 @@ ${prelude}
 </head>
 <body>
 <div class="hmr-stage" data-hmr-stage>${html}</div>
-<script>
+<script id="hmr-user-script">
   (function () {
     var code = atob(${JSON.stringify(userJsB64)});
-    var script = document.createElement("script");
-    script.textContent = code;
-    document.body.appendChild(script);
+    
+    // Wrap user code in an IIFE to avoid global scope pollution on re-execute
+    // This allows const/let declarations to work on restart
+    var wrappedCode = '(function(){' + code + '})();';
+    
+    // Store the wrapped user code globally so it can be re-executed on restart
+    window.__HMR_USER_CODE__ = wrappedCode;
+    
+    // Function to execute user code
+    window.__HMR_EXECUTE_USER_CODE__ = function() {
+      try {
+        // Use eval in global scope to execute the wrapped code
+        (0, eval)(window.__HMR_USER_CODE__);
+      } catch (e) {
+        console.error('[HMR] Failed to execute user code:', e);
+      }
+    };
+    
+    // Execute user code on initial load
+    window.__HMR_EXECUTE_USER_CODE__();
   })();
 </script>
 <script>

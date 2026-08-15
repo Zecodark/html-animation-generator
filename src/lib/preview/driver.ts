@@ -124,9 +124,28 @@ export function buildDriverSource(): string {
     for (var i = 0; i < anims.length; i++) {
       var a = anims[i];
       try {
-        if (!a.pending) { a.pause(); }
-        a.currentTime = ms;
-      } catch (e) {}
+        // If seeking to time 0, restart the animation completely
+        // This ensures animations with fill-mode:forwards reset properly
+        if (t === 0) {
+          // Cancel and restart the animation
+          var effect = a.effect;
+          var timeline = a.timeline;
+          a.cancel();
+          a.effect = effect;
+          a.timeline = timeline;
+          if (!a.pending) { a.pause(); }
+          a.currentTime = 0;
+        } else {
+          if (!a.pending) { a.pause(); }
+          a.currentTime = ms;
+        }
+      } catch (e) {
+        // Fallback if cancel/restart fails
+        try {
+          if (!a.pending) { a.pause(); }
+          a.currentTime = ms;
+        } catch (e2) {}
+      }
     }
   }
 
@@ -153,6 +172,30 @@ export function buildDriverSource(): string {
 
   function setTime(t) {
     if (typeof t !== "number" || !isFinite(t)) return;
+    
+    // If seeking back to time 0, we need to reset the entire animation state
+    if (t === 0 && core.clock !== 0) {
+      // Clear all pending timers and RAF callbacks
+      timers.clear();
+      pendingRaFs.length = 0;
+      
+      // Reset DOM to initial state by re-executing user code
+      if (typeof window.__HMR_EXECUTE_USER_CODE__ === 'function') {
+        try {
+          // Reset stage HTML to initial state
+          var stage = getStage();
+          if (stage && window.__HMR_INITIAL_HTML__) {
+            stage.innerHTML = window.__HMR_INITIAL_HTML__;
+          }
+          
+          // Re-execute user JavaScript
+          window.__HMR_EXECUTE_USER_CODE__();
+        } catch (e) {
+          console.error('[HMR] Failed to reset user code:', e);
+        }
+      }
+    }
+    
     core.clock = t;
     syncAnimations(t);
     fireTimers(t);
@@ -250,10 +293,17 @@ export function buildDriverSource(): string {
         try { window.performance.now = function () { return nativeDateNow(); }; } catch (e) {}
       }
       await nextNativeTick();
+      
+      // Use higher pixelRatio for better quality
+      // - window.devicePixelRatio gives native display DPI (usually 1, 2, or 3)
+      // - Clamp to max 3 to avoid excessive memory usage
+      var devicePixelRatio = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+      var targetPixelRatio = Math.min(devicePixelRatio, 3);
+      
       var opts = {
         width: w,
         height: h,
-        pixelRatio: 1,
+        pixelRatio: targetPixelRatio,
         cacheBust: true,
         skipAutoScale: true,
         // Failed images render as a transparent pixel instead of aborting the capture.
@@ -362,6 +412,13 @@ export function buildDriverSource(): string {
     try {
       getOutput();
       configure(stageConfig);
+      
+      // Backup initial HTML for restart functionality
+      var stage = getStage();
+      if (stage && !window.__HMR_INITIAL_HTML__) {
+        window.__HMR_INITIAL_HTML__ = stage.innerHTML;
+      }
+      
       // Drive all CSS animations off the virtual clock immediately.
       syncAnimations(0);
       post("READY", { version: "1.0.0", width: stageConfig.width, height: stageConfig.height });
