@@ -19,6 +19,16 @@ export type PreviewMessage =
     }
   | { type: "RENDER_END" }
   | { type: "CONFIGURE"; width: number; height: number; scale?: number; panX?: number; panY?: number }
+  | {
+      type: "PREVIEW_FRAME";
+      enabled: boolean;
+      width?: number;
+      height?: number;
+      fit?: string;
+      alignX?: string;
+      alignY?: string;
+      objectScale?: number;
+    }
   | { type: "SET_BACKGROUND"; color: string | null };
 
 export type FrameMessage = {

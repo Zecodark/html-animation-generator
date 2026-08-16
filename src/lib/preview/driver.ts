@@ -92,7 +92,20 @@ export function buildDriverSource(): string {
     panY: 0
   };
   var stageConfig = { width: 1920, height: 1080, scale: 1, panX: 0, panY: 0 };
+  // Live export framing: when enabled, the preview shows the output frame
+  // (selected export resolution) with the content laid out exactly as the
+  // render will produce — a responsive WYSIWYG preview.
+  var frameConfig = {
+    enabled: false,
+    width: 1920,
+    height: 1080,
+    fit: "contain",
+    alignX: "center",
+    alignY: "center",
+    objectScale: 1
+  };
   var outputEl = null;
+  var frameOverlay = null;
 
   function post(type, payload, transfer) {
     try {
@@ -118,6 +131,20 @@ export function buildDriverSource(): string {
     document.body.insertBefore(outputEl, document.body.firstChild);
     if (stage) outputEl.appendChild(stage);
     return outputEl;
+  }
+
+  function getFrameOverlay() {
+    if (frameOverlay) return frameOverlay;
+    frameOverlay = document.createElement("div");
+    frameOverlay.id = "hmr-frame";
+    frameOverlay.style.position = "absolute";
+    frameOverlay.style.pointerEvents = "none";
+    frameOverlay.style.boxSizing = "border-box";
+    frameOverlay.style.border = "1px dashed rgba(255,140,20,0.9)";
+    frameOverlay.style.zIndex = "999999";
+    frameOverlay.style.display = "none";
+    document.body.appendChild(frameOverlay);
+    return frameOverlay;
   }
 
   function syncAnimations(t) {
@@ -214,21 +241,18 @@ export function buildDriverSource(): string {
     return new Promise(function (resolve) { nativeSetTimeout(resolve, 10); });
   }
 
-  function fitTransform(w, h) {
-    // Object/content zoom (cs) MULTIPLIES the fit scale — this is the
-    // "fixed base viewport + CSS transform scale" approach from the plan:
-    // the base canvas is first fit into the output frame, then cs zooms in/out
-    // around the frame center so bigger resolutions can show the object bigger.
-    var cs = renderConfig.scale || stageConfig.scale || 1;
-    var sw = renderConfig.sourceWidth || stageConfig.width;
-    var sh = renderConfig.sourceHeight || stageConfig.height;
-    var fx = w / sw;
-    var fy = h / sh;
-    var scaleX, scaleY, ox = 0, oy = 0;
-    if (renderConfig.fit === "cover") {
+  // Compute how the source canvas (sw x sh) is placed into an output frame
+  // (outW x outH) given fit/zoom/pan. Shared by preview framing and render.
+  function computePlacement(outW, outH, opt) {
+    var cs = opt.scale || 1;
+    var sw = opt.sw, sh = opt.sh;
+    var fx = outW / sw;
+    var fy = outH / sh;
+    var scaleX, scaleY;
+    if (opt.fit === "cover") {
       var F = Math.max(fx, fy);
       scaleX = scaleY = F * cs;
-    } else if (renderConfig.fit === "fill") {
+    } else if (opt.fit === "fill") {
       scaleX = fx * cs;
       scaleY = fy * cs;
     } else {
@@ -237,15 +261,33 @@ export function buildDriverSource(): string {
     }
     var cw = sw * scaleX;
     var ch = sh * scaleY;
-    ox = renderConfig.alignX === "left" ? 0 : renderConfig.alignX === "right" ? w - cw : (w - cw) / 2;
-    oy = renderConfig.alignY === "top" ? 0 : renderConfig.alignY === "bottom" ? h - ch : (h - ch) / 2;
-    // Content pan (percent of the source canvas) — keeps a scaled object in
-    // the frame after zooming, mirroring the preview layout control.
-    ox += (((renderConfig.panX || stageConfig.panX) || 0) / 100) * sw * scaleX;
-    oy += (((renderConfig.panY || stageConfig.panY) || 0) / 100) * sh * scaleY;
-    var transform = "scale(" + scaleX + (scaleX !== scaleY ? "," + scaleY : "") + ")";
-    if (ox !== 0 || oy !== 0) {
-      transform = "translate(" + ox + "px," + oy + "px) " + transform;
+    var ox = opt.alignX === "left" ? 0 : opt.alignX === "right" ? outW - cw : (outW - cw) / 2;
+    var oy = opt.alignY === "top" ? 0 : opt.alignY === "bottom" ? outH - ch : (outH - ch) / 2;
+    ox += ((opt.panX || 0) / 100) * sw * scaleX;
+    oy += ((opt.panY || 0) / 100) * sh * scaleY;
+    return { scaleX: scaleX, scaleY: scaleY, ox: ox, oy: oy };
+  }
+
+  function fitTransform(w, h) {
+    // Object/content zoom (cs) MULTIPLIES the fit scale — this is the
+    // "fixed base viewport + CSS transform scale" approach from the plan:
+    // the base canvas is first fit into the output frame, then cs zooms in/out
+    // around the frame center so bigger resolutions can show the object bigger.
+    var sw = renderConfig.sourceWidth || stageConfig.width;
+    var sh = renderConfig.sourceHeight || stageConfig.height;
+    var p = computePlacement(w, h, {
+      fit: renderConfig.fit || "contain",
+      alignX: renderConfig.alignX || "center",
+      alignY: renderConfig.alignY || "center",
+      scale: renderConfig.scale || stageConfig.scale || 1,
+      panX: renderConfig.panX !== undefined ? renderConfig.panX : stageConfig.panX || 0,
+      panY: renderConfig.panY !== undefined ? renderConfig.panY : stageConfig.panY || 0,
+      sw: sw,
+      sh: sh
+    });
+    var transform = "scale(" + p.scaleX + (p.scaleX !== p.scaleY ? "," + p.scaleY : "") + ")";
+    if (p.ox !== 0 || p.oy !== 0) {
+      transform = "translate(" + p.ox + "px," + p.oy + "px) " + transform;
     }
     return { transform: transform, sw: sw, sh: sh };
   }
@@ -352,19 +394,60 @@ export function buildDriverSource(): string {
     if (!stage) return;
     var vw = window.innerWidth || 1;
     var vh = window.innerHeight || 1;
-    var cs = stageConfig.scale || 1;
-    var w = stageConfig.width, h = stageConfig.height;
-    var fitScale = Math.min(vw / w, vh / h);
-    if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
-    var sx = fitScale * cs;
-    var cw = w * sx, ch = h * sx;
-    var tx = (vw - cw) / 2 + ((stageConfig.panX || 0) / 100) * w * sx;
-    var ty = (vh - ch) / 2 + ((stageConfig.panY || 0) / 100) * h * sx;
-    stage.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sx + ")";
-    stage.style.transformOrigin = "0 0";
     var out = getOutput();
-    out.style.width = vw + "px";
-    out.style.height = vh + "px";
+    var overlay = getFrameOverlay();
+
+    if (frameConfig.enabled && frameConfig.width > 0 && frameConfig.height > 0) {
+      // Responsive WYSIWYG: fit the selected export frame into the panel, then
+      // place the content inside it exactly as the render will (fit/zoom/pan).
+      var ds = Math.min(vw / frameConfig.width, vh / frameConfig.height);
+      if (!isFinite(ds) || ds <= 0) ds = 1;
+      var fw = frameConfig.width * ds;
+      var fh = frameConfig.height * ds;
+      var fx = (vw - fw) / 2;
+      var fy = (vh - fh) / 2;
+      var p = computePlacement(frameConfig.width, frameConfig.height, {
+        fit: frameConfig.fit,
+        alignX: frameConfig.alignX,
+        alignY: frameConfig.alignY,
+        scale: (stageConfig.scale || 1) * (frameConfig.objectScale || 1),
+        panX: stageConfig.panX || 0,
+        panY: stageConfig.panY || 0,
+        sw: stageConfig.width,
+        sh: stageConfig.height
+      });
+      var sx = p.scaleX * ds;
+      var sy = p.scaleY * ds;
+      var tx = fx + p.ox * ds;
+      var ty = fy + p.oy * ds;
+      stage.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sx + (sx !== sy ? "," + sy : "") + ")";
+      stage.style.transformOrigin = "0 0";
+      out.style.left = fx + "px";
+      out.style.top = fy + "px";
+      out.style.width = fw + "px";
+      out.style.height = fh + "px";
+      overlay.style.left = fx + "px";
+      overlay.style.top = fy + "px";
+      overlay.style.width = fw + "px";
+      overlay.style.height = fh + "px";
+      overlay.style.display = "block";
+    } else {
+      var cs = stageConfig.scale || 1;
+      var w = stageConfig.width, h = stageConfig.height;
+      var fitScale = Math.min(vw / w, vh / h);
+      if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
+      var sx2 = fitScale * cs;
+      var cw = w * sx2, ch = h * sx2;
+      var tx2 = (vw - cw) / 2 + ((stageConfig.panX || 0) / 100) * w * sx2;
+      var ty2 = (vh - ch) / 2 + ((stageConfig.panY || 0) / 100) * h * sx2;
+      stage.style.transform = "translate(" + tx2 + "px," + ty2 + "px) scale(" + sx2 + ")";
+      stage.style.transformOrigin = "0 0";
+      out.style.left = "0px";
+      out.style.top = "0px";
+      out.style.width = vw + "px";
+      out.style.height = vh + "px";
+      overlay.style.display = "none";
+    }
   }
 
   function configure(cfg) {
@@ -432,6 +515,18 @@ export function buildDriverSource(): string {
         break;
       case "CONFIGURE":
         configure(data);
+        break;
+      case "PREVIEW_FRAME":
+        frameConfig.enabled = data.enabled !== false;
+        if (data.width && data.height) {
+          frameConfig.width = data.width;
+          frameConfig.height = data.height;
+        }
+        if (typeof data.fit === "string") frameConfig.fit = data.fit;
+        if (typeof data.alignX === "string") frameConfig.alignX = data.alignX;
+        if (typeof data.alignY === "string") frameConfig.alignY = data.alignY;
+        if (typeof data.objectScale === "number") frameConfig.objectScale = data.objectScale;
+        layout();
         break;
     }
   });

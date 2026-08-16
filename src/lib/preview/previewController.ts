@@ -164,6 +164,27 @@ export class PreviewController {
     this.post({ type: "CONFIGURE", width, height, scale, panX, panY });
   }
 
+  previewFrame(config: {
+    enabled: boolean;
+    width?: number;
+    height?: number;
+    fit?: string;
+    alignX?: string;
+    alignY?: string;
+    objectScale?: number;
+  }) {
+    this.post({
+      type: "PREVIEW_FRAME",
+      enabled: config.enabled,
+      width: config.width,
+      height: config.height,
+      fit: config.fit,
+      alignX: config.alignX,
+      alignY: config.alignY,
+      objectScale: config.objectScale,
+    });
+  }
+
   /** Wait for the next captured frame produced by the iframe. */
   waitForFrame(options: WaitOptions = {}): Promise<ImageBitmap> {
     if (this.pendingFrame) {

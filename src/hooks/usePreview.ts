@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "@/stores/editorStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useTimelineStore } from "@/stores/timelineStore";
+import { useRenderStore } from "@/stores/renderStore";
 import { buildDocument } from "@/lib/preview/documentBuilder";
 import { PreviewController, type PreviewReadyInfo } from "@/lib/preview/previewController";
 import { AnimationController } from "@/lib/renderer/AnimationController";
@@ -14,6 +15,12 @@ export function usePreview() {
   const css = useEditorStore((state) => state.css);
   const js = useEditorStore((state) => state.js);
   const projectSettings = useProjectStore((state) => state.settings);
+  const exportFrameWidth = useRenderStore((state) => state.exportSettings.width);
+  const exportFrameHeight = useRenderStore((state) => state.exportSettings.height);
+  const exportFrameFit = useRenderStore((state) => state.exportSettings.fit);
+  const exportFrameAlignX = useRenderStore((state) => state.exportSettings.alignX);
+  const exportFrameAlignY = useRenderStore((state) => state.exportSettings.alignY);
+  const exportFrameObjectScale = useRenderStore((state) => state.exportSettings.objectScale);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const controllerRef = useRef<PreviewController | null>(null);
@@ -99,6 +106,62 @@ export function usePreview() {
       projectSettings.panY
     );
   }, [isClient, readyInfo, projectSettings.width, projectSettings.height, projectSettings.scale, projectSettings.panX, projectSettings.panY]);
+
+  // Live WYSIWYG: preview frames the canvas using the CURRENT export settings
+  // (selected resolution / fit / align / object scale), so picking e.g.
+  // 1080x1080 immediately reshapes the preview to that output aspect, and the
+  // export always matches what is shown.
+  useEffect(() => {
+    if (!isClient) return;
+    const controller = controllerRef.current;
+    if (!controller || !readyInfo) return;
+    controller.previewFrame({
+      enabled: true,
+      width: exportFrameWidth,
+      height: exportFrameHeight,
+      fit: exportFrameFit,
+      alignX: exportFrameAlignX,
+      alignY: exportFrameAlignY,
+      objectScale: exportFrameObjectScale,
+    });
+  }, [isClient, readyInfo, exportFrameWidth, exportFrameHeight, exportFrameFit, exportFrameAlignX, exportFrameAlignY, exportFrameObjectScale]);
+
+  // Size the preview iframe to the SOURCE canvas and scale it down to fit the
+  // panel via a CSS transform. The transform only changes the visual output —
+  // the iframe's internal viewport stays at the source size, so vw/vh inside
+  // the document resolve exactly like during render. Without this, viewport
+  // units (and any layout that depends on the window size) would lay out
+  // against the small preview panel and the export would not match the preview.
+  useEffect(() => {
+    if (!isClient) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const container = iframe.parentElement;
+    if (!container) return;
+
+    const update = () => {
+      const cw = container.clientWidth || 0;
+      const ch = container.clientHeight || 0;
+      const w = projectSettings.width;
+      const h = projectSettings.height;
+      if (!cw || !ch || !w || !h) return;
+      const s = Math.min(cw / w, ch / h);
+      const scale = isFinite(s) && s > 0 ? s : 1;
+      iframe.style.width = `${w}px`;
+      iframe.style.height = `${h}px`;
+      iframe.style.transformOrigin = "0 0";
+      iframe.style.transform = `translate(${(cw - w * scale) / 2}px, ${(ch - h * scale) / 2}px) scale(${scale})`;
+    };
+
+    update();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(update);
+      ro.observe(container);
+      return () => ro.disconnect();
+    }
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [isClient, projectSettings.width, projectSettings.height]);
 
   // Keep the preview clock configuration in sync with the project settings.
   useEffect(() => {
