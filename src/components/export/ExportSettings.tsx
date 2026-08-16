@@ -26,7 +26,7 @@ function transparencyHint(settings: ExportSettings): string | null {
     case "webm":
       return "WebM via WebCodecs does not expose an alpha channel in this pipeline. Use PNG Sequence for transparency.";
     case "mov":
-      return "MOV (MPEG-4) does not support alpha transparency. Use PNG Sequence for transparency.";
+      return "MOV alpha didukung — di-encode sebagai Apple ProRes 4444 (fallback: QuickTime Animation / PNG in MOV). Area transparan tampil asli di aplikasi compositing/editor; di player polos tampak checkerboard (QuickTime) atau hitam (VLC). Ukuran file besar.";
     case "gif":
       return "GIF supports 1-bit transparency (max 256 colors).";
     case "png-sequence":
@@ -244,18 +244,46 @@ export function ExportSettings({
             ))}
           </div>
           {settings.background === "solid" && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <input
-                type="color"
-                value={settings.backgroundColor ?? "#000000"}
-                onChange={(e) =>
-                  onChange({ backgroundColor: e.target.value, transparent: false })
-                }
-                className="h-7 w-10 cursor-pointer rounded border border-zinc-800 bg-zinc-900"
-              />
-              <span className="font-mono text-[10px] text-zinc-500">
-                {settings.backgroundColor ?? "#000000"}
-              </span>
+            <div className="mt-1.5 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={settings.backgroundColor ?? "#000000"}
+                  onChange={(e) =>
+                    onChange({ backgroundColor: e.target.value, transparent: false })
+                  }
+                  className="h-7 w-10 cursor-pointer rounded border border-zinc-800 bg-zinc-900"
+                />
+                <span className="font-mono text-[10px] text-zinc-500">
+                  {settings.backgroundColor ?? "#000000"}
+                </span>
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() =>
+                    onChange({ background: "solid", transparent: false, backgroundColor: "#00FF00" })
+                  }
+                  className={`flex-1 rounded border px-2 py-1 text-[10px] transition-colors ${
+                    settings.backgroundColor === "#00FF00"
+                      ? "border-green-500 bg-green-500/20 text-green-200"
+                      : "border-green-800/60 bg-green-500/10 text-green-300/80 hover:bg-green-500/20"
+                  }`}
+                >
+                  Green Screen
+                </button>
+                <button
+                  onClick={() =>
+                    onChange({ background: "solid", transparent: false, backgroundColor: "#0000FF" })
+                  }
+                  className={`flex-1 rounded border px-2 py-1 text-[10px] transition-colors ${
+                    settings.backgroundColor === "#0000FF"
+                      ? "border-blue-500 bg-blue-500/20 text-blue-200"
+                      : "border-blue-800/60 bg-blue-500/10 text-blue-300/80 hover:bg-blue-500/20"
+                  }`}
+                >
+                  Blue Screen
+                </button>
+              </div>
             </div>
           )}
           {settings.background === "gradient" && (

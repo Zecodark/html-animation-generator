@@ -75,7 +75,14 @@ export function usePreview() {
         if (!alive) return;
         setReadyInfo(info);
         const s = useProjectStore.getState().settings;
-        controller.configure(s.width, s.height, s.scale, s.panX, s.panY);
+        controller.configure(
+          s.width,
+          s.height,
+          s.scale,
+          s.panX,
+          s.panY,
+          s.background === "solid" ? s.backgroundColor || null : null
+        );
         controller.setTime(useTimelineStore.getState().currentTime);
       })
       .catch((error) => {
@@ -103,9 +110,10 @@ export function usePreview() {
       projectSettings.height,
       projectSettings.scale,
       projectSettings.panX,
-      projectSettings.panY
+      projectSettings.panY,
+      projectSettings.background === "solid" ? projectSettings.backgroundColor || null : null
     );
-  }, [isClient, readyInfo, projectSettings.width, projectSettings.height, projectSettings.scale, projectSettings.panX, projectSettings.panY]);
+  }, [isClient, readyInfo, projectSettings.width, projectSettings.height, projectSettings.scale, projectSettings.panX, projectSettings.panY, projectSettings.background, projectSettings.backgroundColor]);
 
   // Live WYSIWYG: preview frames the canvas using the CURRENT export settings
   // (selected resolution / fit / align / object scale), so picking e.g.

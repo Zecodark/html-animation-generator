@@ -160,8 +160,8 @@ export class PreviewController {
     iframe.style.height = saved.height;
   }
 
-  configure(width: number, height: number, scale?: number, panX?: number, panY?: number) {
-    this.post({ type: "CONFIGURE", width, height, scale, panX, panY });
+  configure(width: number, height: number, scale?: number, panX?: number, panY?: number, backgroundColor?: string | null) {
+    this.post({ type: "CONFIGURE", width, height, scale, panX, panY, backgroundColor });
   }
 
   previewFrame(config: {

@@ -464,6 +464,14 @@ export function buildDriverSource(): string {
     if (cfg && typeof cfg.panY === "number" && isFinite(cfg.panY)) {
       stageConfig.panY = cfg.panY;
     }
+    if (cfg && "backgroundColor" in cfg) {
+      // Show a preview backdrop for solid-color backgrounds (e.g. green/blue
+      // screen presets) so the user sees it, not only in the exported render.
+      document.body.style.background =
+        cfg.backgroundColor && cfg.backgroundColor !== "transparent"
+          ? cfg.backgroundColor
+          : "transparent";
+    }
     var stage = getStage();
     if (stage) {
       stage.style.width = stageConfig.width + "px";

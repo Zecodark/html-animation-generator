@@ -121,7 +121,7 @@ export class EncoderManager {
       case "mov": {
         if (settings.transparent) {
           warnings.push(
-            "MOV (MPEG-4 video) does not support alpha transparency. Use PNG Sequence for transparency."
+            "MOV alpha enabled — akan di-encode sebagai Apple ProRes 4444 (fallback: QuickTime Animation / PNG in MOV) via FFmpeg. Butuh koneksi internet untuk core FFmpeg; ukuran file besar; area transparan tampil checkerboard (QuickTime) atau hitam di player polos — hasilnya untuk dikomposit."
           );
         }
         const ffmpeg = new FFmpegEncoder();

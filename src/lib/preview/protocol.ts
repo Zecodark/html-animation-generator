@@ -18,7 +18,7 @@ export type PreviewMessage =
       panY?: number | null;
     }
   | { type: "RENDER_END" }
-  | { type: "CONFIGURE"; width: number; height: number; scale?: number; panX?: number; panY?: number }
+  | { type: "CONFIGURE"; width: number; height: number; scale?: number; panX?: number; panY?: number; backgroundColor?: string | null }
   | {
       type: "PREVIEW_FRAME";
       enabled: boolean;

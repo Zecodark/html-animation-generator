@@ -88,6 +88,13 @@ async function runFinalize(): Promise<Blob> {
   if (!hasFrames) throw new Error("No frames were received");
 
   const fps = settings.fps;
+
+  // MOV is a container, not a codec: transparent MOV is a NEW isolated path
+  // (ProRes 4444 / Animation / PNG all carry alpha). Opaque MOV stays mpeg4.
+  if (settings.format === "mov" && settings.transparent) {
+    return encodeMovAlpha(fps);
+  }
+
   const codec =
     settings.format === "mov" ? "mpeg4" : settings.format === "webm" ? "libvpx-vp9" : "libx264";
 
@@ -128,7 +135,17 @@ async function runFinalize(): Promise<Blob> {
 
   args.push("output.mov");
 
-  await ffmpeg.exec(args);
+  try {
+    await ffmpeg.exec(args);
+  } catch (error) {
+    // Never leave a partial/corrupt file that could be mistaken for success.
+    try {
+      await ffmpeg.deleteFile("output.mov");
+    } catch {
+      /* noop */
+    }
+    throw error;
+  }
   const data = await ffmpeg.readFile("output.mov");
 
   let type = "video/mp4";
@@ -137,6 +154,110 @@ async function runFinalize(): Promise<Blob> {
 
   const bytes = data.slice(0);
   return new Blob([bytes], { type });
+}
+
+/**
+ * Transparent MOV (alpha) via an alpha-capable codec in MOV. The frames fed
+ * here are RGBA PNGs written by addFrame(), so the alpha is real — no
+ * color-key / background-removal tricks, so no halo.
+ *
+ * Priority:
+ *   1. Apple ProRes 4444  (yuva444p10le) — stock/editing standard, efficient.
+ *   2. QuickTime Animation (qtrle)       — native QT lossless alpha.
+ *   3. PNG in MOV         (rgba)         — lossless, most universal decoder.
+ *
+ * Any candidate missing from a given FFmpeg.wasm build causes exec() to fail;
+ * we then clean the partial and try the next one. If none is available we
+ * raise a clear error instead of producing a fake/opaque file. The finished
+ * file is decoded back and its alpha plane verified before handing it over.
+ */
+async function encodeMovAlpha(fps: number): Promise<Blob> {
+  if (!ffmpeg) throw new Error("FFmpeg not initialized");
+
+  const candidates: Array<{ label: string; args: string[] }> = [
+    {
+      label: "Apple ProRes 4444",
+      args: ["-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le"],
+    },
+    {
+      label: "QuickTime Animation",
+      args: ["-c:v", "qtrle", "-pix_fmt", "rgba"],
+    },
+    {
+      label: "PNG",
+      args: ["-c:v", "png", "-pix_fmt", "rgba"],
+    },
+  ];
+
+  const base = [
+    "-y",
+    "-framerate",
+    String(fps),
+    "-i",
+    "frame_%05d.png",
+    "-movflags",
+    "+faststart",
+  ];
+
+  let ok = false;
+  for (let i = 0; i < candidates.length; i++) {
+    const cand = candidates[i];
+    try {
+      await ffmpeg.exec([...base, ...cand.args, "output.mov"]);
+      ok = true;
+      break;
+    } catch {
+      // Encoder unavailable in this FFmpeg.wasm build (or encode failed).
+      try {
+        await ffmpeg.deleteFile("output.mov");
+      } catch {
+        /* noop */
+      }
+      if (i === candidates.length - 1) {
+        throw new Error(
+          `Alpha MOV requires an alpha-capable encoder, but none is available in this FFmpeg build: ` +
+            `${candidates.map((c) => c.label).join(", ")}. ` +
+            `Use PNG Sequence for guaranteed transparency, or check the network connection used to load the FFmpeg core.`
+        );
+      }
+    }
+  }
+  if (!ok || !ffmpeg) throw new Error("Alpha MOV encoding failed unexpectedly");
+
+  // Verify the alpha plane survived. Decode the first frame back to a PNG and
+  // inspect its color type (4 = grey+alpha, 6 = RGBA) — fail loudly otherwise.
+  try {
+    await ffmpeg.exec([
+      "-v",
+      "error",
+      "-i",
+      "output.mov",
+      "-frames:v",
+      "1",
+      "-c:v",
+      "png",
+      "alpha_check.png",
+    ]);
+    const bytes = await ffmpeg.readFile("alpha_check.png");
+    // PNG: 8-byte sig + IHDR len(4) + "IHDR"(4) + width(4) + height(4) + bitdepth(1) + colortype(1)
+    const colorType = bytes.length > 25 ? bytes[25] : 0;
+    const hasAlpha = colorType === 4 || colorType === 6;
+    if (!hasAlpha) {
+      throw new Error("Alpha channel was not detected in rendered frames. Export cancelled.");
+    }
+  } catch (error) {
+    try {
+      await ffmpeg.deleteFile("output.mov");
+    } catch {
+      /* noop */
+    }
+    throw error instanceof Error && error.message.includes("not detected")
+      ? error
+      : new Error(`MOV encoding produced a file that could not be validated: ${String((error as Error)?.message ?? error)}`);
+  }
+
+  const data = await ffmpeg.readFile("output.mov");
+  return new Blob([data.slice(0)], { type: "video/quicktime" });
 }
 
 function cleanup() {

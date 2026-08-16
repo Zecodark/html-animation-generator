@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import { useProjectStore } from "@/stores/projectStore";
 
 interface PreviewFrameProps {
   iframeRef: RefObject<HTMLIFrameElement | null>;
@@ -10,8 +11,29 @@ interface PreviewFrameProps {
 }
 
 export function PreviewFrame({ iframeRef, documentSrc, ready, error }: PreviewFrameProps) {
+  const background = useProjectStore((state) => state.settings.background);
+
+  // Transparent preview uses a checkerboard — a pure UI layer behind the
+  // sandbox iframe. It is NEVER part of the captured/exported image.
+  const checkerboard =
+    background === "transparent"
+      ? {
+          backgroundColor: "#14171c",
+          backgroundImage:
+            "conic-gradient(#24282f 25%, #15181d 0 50%, #24282f 0 75%, #15181d 0)",
+          backgroundSize: "18px 18px",
+        }
+      : undefined;
+
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[radial-gradient(circle_at_50%_40%,#1a1d24_0%,#0b0d11_75%)]">
+    <div
+      className={`relative h-full w-full overflow-hidden ${
+        background === "transparent"
+          ? ""
+          : "bg-[radial-gradient(circle_at_50%_40%,#1a1d24_0%,#0b0d11_75%)]"
+      }`}
+      style={checkerboard}
+    >
       <iframe
         ref={iframeRef}
         title="Motion preview sandbox"

@@ -156,6 +156,43 @@ export function PropertiesPanel() {
             </button>
           ))}
         </div>
+        {settings.background === "solid" && (
+          <div className="mt-1.5 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={settings.backgroundColor ?? "#000000"}
+                onChange={(e) => update({ backgroundColor: e.target.value })}
+                className="h-6 w-9 cursor-pointer rounded border border-zinc-800 bg-zinc-900"
+              />
+              <span className="font-mono text-[10px] text-zinc-500">
+                {settings.backgroundColor ?? "#000000"}
+              </span>
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={() => update({ background: "solid", backgroundColor: "#00FF00" })}
+                className={`flex-1 rounded border px-2 py-1 text-[10px] transition-colors ${
+                  settings.backgroundColor === "#00FF00"
+                    ? "border-green-500 bg-green-500/20 text-green-200"
+                    : "border-green-800/60 bg-green-500/10 text-green-300/80 hover:bg-green-500/20"
+                }`}
+              >
+                Green Screen
+              </button>
+              <button
+                onClick={() => update({ background: "solid", backgroundColor: "#0000FF" })}
+                className={`flex-1 rounded border px-2 py-1 text-[10px] transition-colors ${
+                  settings.backgroundColor === "#0000FF"
+                    ? "border-blue-500 bg-blue-500/20 text-blue-200"
+                    : "border-blue-800/60 bg-blue-500/10 text-blue-300/80 hover:bg-blue-500/20"
+                }`}
+              >
+                Blue Screen
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>
