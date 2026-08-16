@@ -86,9 +86,12 @@ export function buildDriverSource(): string {
     sourceHeight: 1080,
     fit: "contain",
     alignX: "center",
-    alignY: "center"
+    alignY: "center",
+    scale: 1,
+    panX: 0,
+    panY: 0
   };
-  var stageConfig = { width: 1920, height: 1080 };
+  var stageConfig = { width: 1920, height: 1080, scale: 1, panX: 0, panY: 0 };
   var outputEl = null;
 
   function post(type, payload, transfer) {
@@ -212,28 +215,35 @@ export function buildDriverSource(): string {
   }
 
   function fitTransform(w, h) {
+    // Object/content zoom (cs) MULTIPLIES the fit scale — this is the
+    // "fixed base viewport + CSS transform scale" approach from the plan:
+    // the base canvas is first fit into the output frame, then cs zooms in/out
+    // around the frame center so bigger resolutions can show the object bigger.
+    var cs = renderConfig.scale || stageConfig.scale || 1;
     var sw = renderConfig.sourceWidth || stageConfig.width;
     var sh = renderConfig.sourceHeight || stageConfig.height;
-    var sx = w / sw;
-    var sy = h / sh;
-    var transform = "scale(" + sx + "," + sy + ")";
-    var ox = 0;
-    var oy = 0;
+    var fx = w / sw;
+    var fy = h / sh;
+    var scaleX, scaleY, ox = 0, oy = 0;
     if (renderConfig.fit === "cover") {
-      var s = Math.max(sx, sy);
-      var cw = sw * s;
-      var ch = sh * s;
-      transform = "scale(" + s + ")";
-      ox = renderConfig.alignX === "left" ? 0 : renderConfig.alignX === "right" ? w - cw : (w - cw) / 2;
-      oy = renderConfig.alignY === "top" ? 0 : renderConfig.alignY === "bottom" ? h - ch : (h - ch) / 2;
-    } else if (renderConfig.fit === "contain") {
-      var s2 = Math.min(sx, sy);
-      var cw2 = sw * s2;
-      var ch2 = sh * s2;
-      transform = "scale(" + s2 + ")";
-      ox = renderConfig.alignX === "left" ? 0 : renderConfig.alignX === "right" ? w - cw2 : (w - cw2) / 2;
-      oy = renderConfig.alignY === "top" ? 0 : renderConfig.alignY === "bottom" ? h - ch2 : (h - ch2) / 2;
+      var F = Math.max(fx, fy);
+      scaleX = scaleY = F * cs;
+    } else if (renderConfig.fit === "fill") {
+      scaleX = fx * cs;
+      scaleY = fy * cs;
+    } else {
+      var F2 = Math.min(fx, fy);
+      scaleX = scaleY = F2 * cs;
     }
+    var cw = sw * scaleX;
+    var ch = sh * scaleY;
+    ox = renderConfig.alignX === "left" ? 0 : renderConfig.alignX === "right" ? w - cw : (w - cw) / 2;
+    oy = renderConfig.alignY === "top" ? 0 : renderConfig.alignY === "bottom" ? h - ch : (h - ch) / 2;
+    // Content pan (percent of the source canvas) — keeps a scaled object in
+    // the frame after zooming, mirroring the preview layout control.
+    ox += (((renderConfig.panX || stageConfig.panX) || 0) / 100) * sw * scaleX;
+    oy += (((renderConfig.panY || stageConfig.panY) || 0) / 100) * sh * scaleY;
+    var transform = "scale(" + scaleX + (scaleX !== scaleY ? "," + scaleY : "") + ")";
     if (ox !== 0 || oy !== 0) {
       transform = "translate(" + ox + "px," + oy + "px) " + transform;
     }
@@ -342,12 +352,15 @@ export function buildDriverSource(): string {
     if (!stage) return;
     var vw = window.innerWidth || 1;
     var vh = window.innerHeight || 1;
+    var cs = stageConfig.scale || 1;
     var w = stageConfig.width, h = stageConfig.height;
-    var scale = Math.min(vw / w, vh / h);
-    if (!isFinite(scale) || scale <= 0) scale = 1;
-    var tx = (vw - w * scale) / 2;
-    var ty = (vh - h * scale) / 2;
-    stage.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + scale + ")";
+    var fitScale = Math.min(vw / w, vh / h);
+    if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
+    var sx = fitScale * cs;
+    var cw = w * sx, ch = h * sx;
+    var tx = (vw - cw) / 2 + ((stageConfig.panX || 0) / 100) * w * sx;
+    var ty = (vh - ch) / 2 + ((stageConfig.panY || 0) / 100) * h * sx;
+    stage.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sx + ")";
     stage.style.transformOrigin = "0 0";
     var out = getOutput();
     out.style.width = vw + "px";
@@ -358,6 +371,15 @@ export function buildDriverSource(): string {
     if (cfg && cfg.width && cfg.height) {
       stageConfig.width = cfg.width;
       stageConfig.height = cfg.height;
+    }
+    if (cfg && typeof cfg.scale === "number" && isFinite(cfg.scale)) {
+      stageConfig.scale = cfg.scale;
+    }
+    if (cfg && typeof cfg.panX === "number" && isFinite(cfg.panX)) {
+      stageConfig.panX = cfg.panX;
+    }
+    if (cfg && typeof cfg.panY === "number" && isFinite(cfg.panY)) {
+      stageConfig.panY = cfg.panY;
     }
     var stage = getStage();
     if (stage) {
@@ -396,7 +418,10 @@ export function buildDriverSource(): string {
           sourceHeight: data.sourceHeight || stageConfig.height,
           fit: data.fit || "contain",
           alignX: data.alignX || "center",
-          alignY: data.alignY || "center"
+          alignY: data.alignY || "center",
+          scale: typeof data.scale === "number" ? data.scale : stageConfig.scale || 1,
+          panX: typeof data.panX === "number" ? data.panX : stageConfig.panX || 0,
+          panY: typeof data.panY === "number" ? data.panY : stageConfig.panY || 0
         };
         break;
       case "RENDER_END":

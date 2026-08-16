@@ -98,6 +98,9 @@ export class PreviewController {
     fit?: string;
     alignX?: string;
     alignY?: string;
+    scale?: number;
+    panX?: number;
+    panY?: number;
   }) {
     // Resize the iframe viewport to the SOURCE canvas during render so
     // viewport-relative units (vw/vh) in user content resolve deterministically.
@@ -115,6 +118,9 @@ export class PreviewController {
       fit: options.fit ?? "contain",
       alignX: options.alignX ?? "center",
       alignY: options.alignY ?? "center",
+      scale: options.scale ?? 1,
+      panX: options.panX ?? 0,
+      panY: options.panY ?? 0,
     });
   }
 
@@ -154,8 +160,8 @@ export class PreviewController {
     iframe.style.height = saved.height;
   }
 
-  configure(width: number, height: number) {
-    this.post({ type: "CONFIGURE", width, height });
+  configure(width: number, height: number, scale?: number, panX?: number, panY?: number) {
+    this.post({ type: "CONFIGURE", width, height, scale, panX, panY });
   }
 
   /** Wait for the next captured frame produced by the iframe. */

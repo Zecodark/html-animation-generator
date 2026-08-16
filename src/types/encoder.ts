@@ -23,6 +23,8 @@ export interface ExportSettings {
   fit: FitMode;
   alignX: AlignX;
   alignY: AlignY;
+  /** Extra object zoom on top of the project scale (per export session). */
+  objectScale: number;
   filename: string;
 }
 

@@ -52,7 +52,7 @@ export function usePreview() {
     };
   }, []);
 
-  // (Re)attach to the iframe whenever the document (or settings) changes.
+  // (Re)attach to the iframe whenever the injected document changes.
   useEffect(() => {
     if (!isClient) return;
     const controller = controllerRef.current;
@@ -67,7 +67,8 @@ export function usePreview() {
       .then((info) => {
         if (!alive) return;
         setReadyInfo(info);
-        controller.configure(projectSettings.width, projectSettings.height);
+        const s = useProjectStore.getState().settings;
+        controller.configure(s.width, s.height, s.scale, s.panX, s.panY);
         controller.setTime(useTimelineStore.getState().currentTime);
       })
       .catch((error) => {
@@ -79,7 +80,25 @@ export function usePreview() {
       alive = false;
       controller.detach();
     };
-  }, [documentSrc, isClient, projectSettings.width, projectSettings.height]);
+    // width/height are baked into documentSrc; scale is not, so it is kept in
+    // sync by the dedicated geometry effect below without reloading the frame.
+  }, [documentSrc, isClient]);
+
+  // Reconfigure canvas geometry (size + object scale) in place so the preview
+  // updates live without re-attaching (a re-attach waits for a READY that has
+  // already been sent and would time out).
+  useEffect(() => {
+    if (!isClient) return;
+    const controller = controllerRef.current;
+    if (!controller || !readyInfo) return;
+    controller.configure(
+      projectSettings.width,
+      projectSettings.height,
+      projectSettings.scale,
+      projectSettings.panX,
+      projectSettings.panY
+    );
+  }, [isClient, readyInfo, projectSettings.width, projectSettings.height, projectSettings.scale, projectSettings.panX, projectSettings.panY]);
 
   // Keep the preview clock configuration in sync with the project settings.
   useEffect(() => {

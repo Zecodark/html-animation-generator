@@ -324,6 +324,36 @@ export function ExportSettings({
             stretch. Dot places the scene inside the frame.
           </p>
         </div>
+
+        <div className="mt-3">
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+            Object Scale
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={0.1}
+              max={4}
+              step={0.05}
+              value={settings.objectScale}
+              onChange={(e) => onChange({ objectScale: Number(e.target.value) })}
+              className="min-w-0 flex-1 cursor-pointer accent-orange-500"
+            />
+            <span className="w-12 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-center font-mono text-[10px] text-zinc-200">
+              {Math.round(settings.objectScale * 100)}%
+            </span>
+            <button
+              onClick={() => onChange({ objectScale: 1 })}
+              className="rounded border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[10px] text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-200"
+            >
+              Reset
+            </button>
+          </div>
+          <p className="mt-1 text-[10px] leading-snug text-zinc-600">
+            Zoom the HTML object on top of Crop/Fit. Pair it with a large
+            resolution — e.g. pick 4K, then scale up so the object fills more.
+          </p>
+        </div>
       </div>
 
       <div className="rounded border border-zinc-800 bg-zinc-900/60 px-3 py-2">

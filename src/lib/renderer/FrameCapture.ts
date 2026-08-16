@@ -29,6 +29,9 @@ export class PreviewFrameCapture implements FrameCapture {
       fit: options.fit,
       alignX: options.alignX,
       alignY: options.alignY,
+      scale: options.scale,
+      panX: options.panX,
+      panY: options.panY,
     });
     await new Promise<void>((resolve) => setTimeout(resolve, 100));
   }

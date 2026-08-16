@@ -13,9 +13,12 @@ export type PreviewMessage =
       fit?: string;
       alignX?: string;
       alignY?: string;
+      scale?: number | null;
+      panX?: number | null;
+      panY?: number | null;
     }
   | { type: "RENDER_END" }
-  | { type: "CONFIGURE"; width: number; height: number }
+  | { type: "CONFIGURE"; width: number; height: number; scale?: number; panX?: number; panY?: number }
   | { type: "SET_BACKGROUND"; color: string | null };
 
 export type FrameMessage = {

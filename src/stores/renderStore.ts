@@ -15,6 +15,7 @@ export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
   fit: "contain",
   alignX: "center",
   alignY: "center",
+  objectScale: 1,
   filename: "animation",
 };
 

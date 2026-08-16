@@ -12,6 +12,11 @@ export interface RenderOptions {
   fit?: "contain" | "cover" | "fill";
   alignX?: "left" | "center" | "right";
   alignY?: "top" | "center" | "bottom";
+  /** Object/content scale (zoom in/out) around the canvas center. */
+  scale?: number;
+  /** Content pan in percent of the source canvas (keeps scaled objects in frame). */
+  panX?: number;
+  panY?: number;
 }
 
 export interface FrameCapture {

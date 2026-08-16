@@ -11,6 +11,9 @@ export const DEFAULT_SETTINGS: ProjectSettings = {
   height: 1080,
   fps: 30,
   duration: 5,
+  scale: 1,
+  panX: 0,
+  panY: 0,
   background: "transparent",
   backgroundColor: "#FF6B00",
 };

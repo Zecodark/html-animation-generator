@@ -9,6 +9,11 @@ export const ProjectSettingsSchema = z.object({
   height: z.number().int().positive().max(8192),
   fps: z.number().min(1).max(120),
   duration: z.number().positive().max(3600),
+  scale: z.number().min(0.01).max(20).default(1),
+  /** Content pan in percent of the canvas (offsetX/offsetY). Lets you keep a
+   *  scaled object inside the frame when it grows beyond the preview. */
+  panX: z.number().min(-200).max(200).default(0),
+  panY: z.number().min(-200).max(200).default(0),
   background: z.enum(BACKGROUND_TYPES),
   backgroundColor: z.string().default("#FF6B00"),
 });

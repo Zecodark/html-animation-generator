@@ -84,6 +84,9 @@ export function useRenderer(frameCaptureRef: RefObject<PreviewFrameCapture | nul
             fit: settings.fit,
             alignX: settings.alignX,
             alignY: settings.alignY,
+            scale: (projectSettings.scale ?? 1) * (settings.objectScale ?? 1),
+            panX: projectSettings.panX ?? 0,
+            panY: projectSettings.panY ?? 0,
           },
           {
             signal: abort.signal,
