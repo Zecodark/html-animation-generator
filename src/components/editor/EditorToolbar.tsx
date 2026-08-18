@@ -1,15 +1,14 @@
 "use client";
 
-import { usePreview } from "@/hooks/usePreview";
 import { useProjectStore } from "@/stores/projectStore";
 
 interface EditorToolbarProps {
   onRun: () => void;
+  onRestart: () => void;
 }
 
-export function EditorToolbar({ onRun }: EditorToolbarProps) {
+export function EditorToolbar({ onRun, onRestart }: EditorToolbarProps) {
   const loadDemo = useProjectStore((state) => state.loadDemo);
-  const { restart } = usePreview();
 
   return (
     <div className="flex items-center gap-2 border-t border-zinc-900 bg-zinc-950 px-3 py-2">
@@ -26,7 +25,7 @@ export function EditorToolbar({ onRun }: EditorToolbarProps) {
         <div className="flex bg-zinc-900/50 p-1 rounded-lg gap-1">
           <button
             onClick={() => {
-              restart();
+              onRestart();
             }}
             className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
           >

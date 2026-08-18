@@ -112,6 +112,7 @@ export default function Home() {
               preview.restart();
               preview.play();
             }}
+            onRestart={preview.restart}
           />
         </aside>
 
