@@ -115,24 +115,42 @@ export function usePreview() {
     );
   }, [isClient, readyInfo, projectSettings.width, projectSettings.height, projectSettings.scale, projectSettings.panX, projectSettings.panY, projectSettings.background, projectSettings.backgroundColor]);
 
+  const isSettingsOpen = useRenderStore((state) => state.isSettingsOpen);
+
   // Live WYSIWYG: preview frames the canvas using the CURRENT export settings
-  // (selected resolution / fit / align / object scale), so picking e.g.
-  // 1080x1080 immediately reshapes the preview to that output aspect, and the
-  // export always matches what is shown.
+  // if the modal is open, otherwise it uses the base project settings.
+  // This ensures that when changing resolution in the Properties panel, the
+  // preview shape updates immediately.
   useEffect(() => {
     if (!isClient) return;
     const controller = controllerRef.current;
     if (!controller || !readyInfo) return;
+    
+    const w = isSettingsOpen ? exportFrameWidth : projectSettings.width;
+    const h = isSettingsOpen ? exportFrameHeight : projectSettings.height;
+
     controller.previewFrame({
       enabled: true,
-      width: exportFrameWidth,
-      height: exportFrameHeight,
+      width: w,
+      height: h,
       fit: exportFrameFit,
       alignX: exportFrameAlignX,
       alignY: exportFrameAlignY,
       objectScale: exportFrameObjectScale,
     });
-  }, [isClient, readyInfo, exportFrameWidth, exportFrameHeight, exportFrameFit, exportFrameAlignX, exportFrameAlignY, exportFrameObjectScale]);
+  }, [
+    isClient,
+    readyInfo,
+    isSettingsOpen,
+    projectSettings.width,
+    projectSettings.height,
+    exportFrameWidth,
+    exportFrameHeight,
+    exportFrameFit,
+    exportFrameAlignX,
+    exportFrameAlignY,
+    exportFrameObjectScale,
+  ]);
 
   // Size the preview iframe to the SOURCE canvas and scale it down to fit the
   // panel via a CSS transform. The transform only changes the visual output —

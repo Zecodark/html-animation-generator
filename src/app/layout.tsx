@@ -14,9 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HTML Motion Renderer",
+  title: "Zcd-studio",
   description:
     "Turn HTML/CSS/JS animations into deterministic frames and export MP4, WebM, GIF, MOV or PNG sequences — right in the browser.",
+  icons: {
+    icon: "/logo/logo-zcd.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

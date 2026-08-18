@@ -16,6 +16,8 @@
     "@codemirror/view": "^6.43.8",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
     "codemirror": "^6.0.2",
     "gifenc": "^1.0.3",
     "html-to-image": "^1.11.13",

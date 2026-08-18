@@ -21,6 +21,7 @@ import { ProjectMenu } from "@/components/project/ProjectMenu";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { CompatibilityPanel } from "@/components/system/CompatibilityPanel";
 import { ErrorBoundary } from "@/components/system/ErrorBoundary";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 export default function Home() {
   const preview = usePreview();
@@ -55,46 +56,49 @@ export default function Home() {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-zinc-950 text-zinc-200">
       {/* Top bar */}
-      <header className="flex h-12 shrink-0 items-center gap-4 border-b border-zinc-800 bg-zinc-900/80 px-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-orange-600">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" strokeWidth="1.6">
-              <rect x="1.5" y="1.5" width="11" height="11" rx="2" />
-              <path d="M4 9.5 L5.8 6.2 L7.4 8.2 L8.8 5 L10 9.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+      <header className="flex h-12 shrink-0 items-center gap-4 border-b border-zinc-900 bg-zinc-950 px-3">
+        <div className="flex items-center gap-3 pr-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-900/50 p-1.5 shadow-sm">
+            <img src="/logo/logo-zcd.svg" alt="ZCD Logo" className="h-full w-full object-contain" />
           </div>
-          <span className="text-xs font-bold tracking-widest text-zinc-100">
-            HTML MOTION <span className="text-orange-400">RENDERER</span>
-          </span>
+          <div className="flex flex-col justify-center">
+            <span className="text-[13px] font-black tracking-widest text-zinc-100 uppercase leading-none">
+              ZCD Studio
+            </span>
+            <span className="text-[9px] font-semibold tracking-wide text-zinc-500 mt-1 uppercase">
+              HTML to Video Generator
+            </span>
+          </div>
         </div>
 
-        <div className="h-6 w-px bg-zinc-800" />
+        <div className="h-6 w-px bg-zinc-800/50 mx-1" />
 
         <ProjectMenu
           projectName={projectName}
           onNameChange={(name) => setName(name)}
         />
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
           <button
             onClick={() => setShowCompatibility(true)}
-            className="rounded border border-zinc-700 px-3 py-1 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+            className="rounded-lg bg-zinc-900/50 px-3 py-1.5 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all duration-150 cursor-pointer"
           >
             System
           </button>
           <button
             onClick={openSettings}
-            className="rounded bg-orange-600 px-4 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-orange-500"
+            className="rounded-lg bg-orange-600 px-4 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-orange-600/10 hover:bg-orange-500 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
             EXPORT
           </button>
+          <UserMenu />
         </div>
       </header>
 
       {/* Main workspace */}
       <main className="flex min-h-0 flex-1">
         {/* Editor */}
-        <aside className="flex w-[340px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-950">
+        <aside className="flex w-[340px] shrink-0 flex-col border-r border-zinc-900 bg-zinc-950">
           <EditorTabs />
           <div className="min-h-0 flex-1" key={activeTab}>
             <CodeEditor
@@ -131,15 +135,15 @@ export default function Home() {
               }}
             />
           </div>
-          <div className="h-28 shrink-0 border-t border-zinc-800">
+          <div className="h-28 shrink-0 border-t border-zinc-900">
             <Timeline onSeek={preview.seek} />
           </div>
         </section>
 
         {/* Properties */}
-        <aside className="hidden w-[240px] shrink-0 flex-col border-l border-zinc-800 bg-zinc-950 lg:flex">
-          <div className="border-b border-zinc-800 bg-zinc-900/60 px-3 py-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+        <aside className="hidden w-[240px] shrink-0 flex-col border-l border-zinc-900 bg-zinc-950 lg:flex">
+          <div className="border-b border-zinc-900 bg-zinc-950/40 px-3 py-2.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
               Properties
             </span>
           </div>
@@ -150,7 +154,7 @@ export default function Home() {
       </main>
 
       {/* Status bar */}
-      <footer className="h-9 shrink-0 border-t border-zinc-800 bg-zinc-900/80">
+      <footer className="h-9 shrink-0 border-t border-zinc-900 bg-zinc-950">
         <RenderQueue onRenderAll={() => void processRenderQueue()} />
       </footer>
 

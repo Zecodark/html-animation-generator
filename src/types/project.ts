@@ -37,10 +37,12 @@ export const RESOLUTION_PRESETS: Array<{ label: string; width: number; height: n
   { label: "1920 × 1080", width: 1920, height: 1080 },
   { label: "1080 × 1920", width: 1080, height: 1920 },
   { label: "1080 × 1080", width: 1080, height: 1080 },
+  { label: "2160 × 3840", width: 2160, height: 3840 },
+  { label: "2160 × 2160", width: 2160, height: 2160 },
   { label: "3840 × 2160", width: 3840, height: 2160 },
   { label: "4096 × 2160", width: 4096, height: 2160 },
 ];
 
 export const FPS_PRESETS = [24, 25, 30, 50, 60] as const;
 
-export const DURATION_PRESETS = [1, 2, 3, 5, 10] as const;
+export const DURATION_PRESETS = [1, 2, 3, 5, 6, 7, 8, 9, 10] as const;

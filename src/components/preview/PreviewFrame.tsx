@@ -38,7 +38,7 @@ export function PreviewFrame({ iframeRef, documentSrc, ready, error }: PreviewFr
         ref={iframeRef}
         title="Motion preview sandbox"
         sandbox="allow-scripts allow-same-origin"
-        className="absolute inset-0 h-full w-full border-0"
+        className="absolute top-0 left-0 border-0"
         srcDoc={documentSrc}
       />
 
