@@ -143,19 +143,25 @@ export function ExportSettings({
       </div>
 
       {/* FPS + Duration */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-          <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-            FPS
-          </label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              FPS
+            </label>
+            <span className="font-mono text-[10px] text-zinc-400">
+              {settings.fps} fps
+            </span>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {FPS_PRESETS.map((fps) => (
               <button
                 key={fps}
+                type="button"
                 onClick={() => onChange({ fps })}
                 className={`rounded border px-2 py-1 font-mono text-[10px] transition-colors ${
                   settings.fps === fps
-                    ? "border-orange-500 bg-orange-500/10 text-orange-300"
+                    ? "border-orange-500 bg-orange-500/10 text-orange-300 font-bold"
                     : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"
                 }`}
               >
@@ -166,33 +172,76 @@ export function ExportSettings({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-            Duration
-          </label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              Duration
+            </label>
+            <span className="font-mono text-[10px] text-zinc-400">
+              {settings.duration}s ({estimatedFrames}f)
+            </span>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {DURATION_PRESETS.map((dur) => (
               <button
                 key={dur}
+                type="button"
                 onClick={() => onChange({ duration: dur })}
                 className={`rounded border px-2 py-1 font-mono text-[10px] transition-colors ${
                   settings.duration === dur
-                    ? "border-orange-500 bg-orange-500/10 text-orange-300"
+                    ? "border-orange-500 bg-orange-500/10 text-orange-300 font-bold"
                     : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"
                 }`}
               >
                 {dur}s
               </button>
             ))}
+            <button
+              type="button"
+              className={`rounded border px-2 py-1 text-[10px] font-medium transition-colors ${
+                !DURATION_PRESETS.includes(settings.duration as (typeof DURATION_PRESETS)[number])
+                  ? "border-orange-500 bg-orange-500/10 text-orange-300 font-bold"
+                  : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"
+              }`}
+            >
+              Other
+            </button>
           </div>
-          <input
-            type="number"
-            min={0.1}
-            max={3600}
-            step={0.1}
-            value={settings.duration}
-            onChange={(e) => onChange({ duration: Number(e.target.value) || 0 })}
-            className="mt-1.5 w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] text-zinc-200 focus:border-orange-500 focus:outline-none"
-          />
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <input
+                type="number"
+                min={0.1}
+                max={3600}
+                step={0.1}
+                value={settings.duration === 0 ? "" : settings.duration}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? 0 : Number(e.target.value);
+                  onChange({ duration: isNaN(val) ? 0 : val });
+                }}
+                className="w-full rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 pr-7 font-mono text-[11px] text-zinc-200 focus:border-orange-500 focus:outline-none"
+                placeholder="Duration in seconds"
+              />
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-zinc-500">
+                s
+              </span>
+            </div>
+            <button
+              type="button"
+              title="Decrease 1s"
+              onClick={() => onChange({ duration: Math.max(0.1, Number((settings.duration - 1).toFixed(1))) })}
+              className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 font-mono text-[10px] text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-colors"
+            >
+              -1s
+            </button>
+            <button
+              type="button"
+              title="Increase 1s"
+              onClick={() => onChange({ duration: Math.min(3600, Number((settings.duration + 1).toFixed(1))) })}
+              className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 font-mono text-[10px] text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-colors"
+            >
+              +1s
+            </button>
+          </div>
         </div>
       </div>
 

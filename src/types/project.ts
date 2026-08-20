@@ -45,4 +45,4 @@ export const RESOLUTION_PRESETS: Array<{ label: string; width: number; height: n
 
 export const FPS_PRESETS = [24, 25, 30, 50, 60] as const;
 
-export const DURATION_PRESETS = [1, 2, 3, 5, 6, 7, 8, 9, 10] as const;
+export const DURATION_PRESETS = [1, 2, 3, 5, 10, 15, 30] as const;

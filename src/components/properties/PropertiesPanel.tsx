@@ -109,15 +109,21 @@ export function PropertiesPanel() {
       </div>
 
       <div>
-        <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-          Duration
-        </label>
-        <div className="grid grid-cols-5 bg-zinc-900/50 p-1 rounded-lg gap-1">
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            Duration
+          </label>
+          <span className="font-mono text-[10px] text-zinc-400">
+            {settings.duration}s ({Math.round(settings.fps * settings.duration)} frames)
+          </span>
+        </div>
+        <div className="grid grid-cols-4 bg-zinc-900/50 p-1 rounded-lg gap-1">
           {DURATION_PRESETS.map((dur) => {
             const active = settings.duration === dur;
             return (
               <button
                 key={dur}
+                type="button"
                 onClick={() => update({ duration: dur })}
                 className={`rounded-md py-1.5 text-center font-mono text-[10px] transition-all duration-150 ${
                   active
@@ -129,6 +135,52 @@ export function PropertiesPanel() {
               </button>
             );
           })}
+          <button
+            type="button"
+            className={`rounded-md py-1.5 text-center text-[10px] font-medium transition-all duration-150 ${
+              !DURATION_PRESETS.includes(settings.duration as (typeof DURATION_PRESETS)[number])
+                ? "bg-zinc-800 text-orange-400 font-bold shadow-sm"
+                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+            }`}
+          >
+            Other
+          </button>
+        </div>
+        <div className="mt-2 flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <input
+              type="number"
+              min={0.1}
+              max={3600}
+              step={0.1}
+              value={settings.duration === 0 ? "" : settings.duration}
+              onChange={(e) => {
+                const val = e.target.value === "" ? 0 : Number(e.target.value);
+                update({ duration: isNaN(val) ? 0 : val });
+              }}
+              className="w-full rounded-lg bg-zinc-900/80 px-3 py-2 pr-8 font-mono text-[10px] text-zinc-200 focus:bg-zinc-800 focus:outline-none"
+              placeholder="Custom seconds"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-zinc-500">
+              sec
+            </span>
+          </div>
+          <button
+            type="button"
+            title="Decrease 1s"
+            onClick={() => update({ duration: Math.max(0.1, Number((settings.duration - 1).toFixed(1))) })}
+            className="rounded-lg bg-zinc-900/80 px-2.5 py-2 font-mono text-[10px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          >
+            -1s
+          </button>
+          <button
+            type="button"
+            title="Increase 1s"
+            onClick={() => update({ duration: Math.min(3600, Number((settings.duration + 1).toFixed(1))) })}
+            className="rounded-lg bg-zinc-900/80 px-2.5 py-2 font-mono text-[10px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          >
+            +1s
+          </button>
         </div>
       </div>
 
