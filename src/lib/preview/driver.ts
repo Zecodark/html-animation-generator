@@ -212,13 +212,17 @@ export function buildDriverSource(): string {
       // Reset DOM to initial state by re-executing user code
       if (typeof window.__HMR_EXECUTE_USER_CODE__ === 'function') {
         try {
-          // Reset stage HTML to initial state
-          var stage = getStage();
-          if (stage && window.__HMR_INITIAL_HTML__) {
-            stage.innerHTML = window.__HMR_INITIAL_HTML__;
+          // Reset stage HTML to initial state ONLY for non-React environments.
+          // For React, __HMR_EXECUTE_USER_CODE__ will trigger a render with a new key,
+          // cleanly remounting the component. Touching innerHTML breaks React's virtual DOM!
+          if (!window.__HMR_REACT_ROOT__) {
+            var stage = getStage();
+            if (stage && window.__HMR_INITIAL_HTML__) {
+              stage.innerHTML = window.__HMR_INITIAL_HTML__;
+            }
           }
           
-          // Re-execute user JavaScript
+          // Re-execute user JavaScript (this will remount React with a fresh key)
           window.__HMR_EXECUTE_USER_CODE__();
         } catch (e) {
           console.error('[HMR] Failed to reset user code:', e);
