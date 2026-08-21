@@ -34,7 +34,7 @@ export default function RegisterPage() {
     } else {
       if (data.session) {
         // User is logged in automatically (Auto-Confirm enabled in Supabase)
-        router.push('/')
+        router.push('/beranda')
         router.refresh()
       } else {
         // Email verification is required

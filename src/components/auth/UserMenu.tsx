@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { User } from "@supabase/supabase-js"
 
@@ -37,6 +38,13 @@ export function UserMenu() {
         <span className="text-[11px] font-semibold text-zinc-400 truncate max-w-[130px] hidden sm:inline">
           {user.email}
         </span>
+        <div className="h-3 w-px bg-zinc-800" />
+        <Link
+          href="/beranda"
+          className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          Beranda
+        </Link>
         <div className="h-3 w-px bg-zinc-800" />
         <button
           onClick={handleLogout}

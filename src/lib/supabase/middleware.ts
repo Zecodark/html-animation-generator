@@ -47,7 +47,7 @@ export async function updateSession(request: NextRequest) {
   if (user && isAuthPage) {
     // user is logged in but trying to access login/register page, redirect to home
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/beranda'
     return NextResponse.redirect(url)
   }
 
