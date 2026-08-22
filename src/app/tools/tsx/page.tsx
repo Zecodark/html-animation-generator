@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTsxPreview } from "@/hooks/useTsxPreview";
 import { useCompatibility } from "@/hooks/useCompatibility";
-import { useRenderer } from "@/hooks/useRenderer";
+import { useTsxRenderer } from "@/hooks/useTsxRenderer";
 import { useTsxEditorStore } from "@/stores/tsxEditorStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useRenderStore } from "@/stores/renderStore";
@@ -27,7 +27,7 @@ import { UserMenu } from "@/components/auth/UserMenu";
 export default function TsxToolPage() {
   const preview = useTsxPreview();
   const { capabilities, detected } = useCompatibility();
-  const { renderSingle, processRenderQueue, cancelRender } = useRenderer(preview.frameCapture);
+  const { renderSingle, processRenderQueue, cancelRender } = useTsxRenderer(preview.frameCapture);
 
   const [showCompatibility, setShowCompatibility] = useState(false);
 

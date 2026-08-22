@@ -28,6 +28,12 @@ export abstract class WorkerEncoderAdapter implements VideoEncoderAdapter {
   private donePromise: Promise<Blob> | null = null;
   private resolveDone: ((blob: Blob) => void) | null = null;
   private rejectDone: ((error: Error) => void) | null = null;
+  
+  private pendingFrames = 0;
+  private readonly MAX_QUEUE_SIZE = 10;
+  private frameAckPromise: Promise<void> | null = null;
+  private resolveFrameAck: (() => void) | null = null;
+  
   private terminated = false;
 
   /** Which worker file to use. Must be the literal `new Worker(new URL(...))`. */
@@ -43,6 +49,7 @@ export abstract class WorkerEncoderAdapter implements VideoEncoderAdapter {
     this.settings = settings;
     this.onProgress = onProgress ?? null;
     this.terminated = false;
+    this.pendingFrames = 0;
 
     return new Promise<void>((resolve, reject) => {
       this.initResolve = resolve;
@@ -78,9 +85,25 @@ export abstract class WorkerEncoderAdapter implements VideoEncoderAdapter {
     if (!this.worker || this.terminated) {
       throw new Error("Encoder is not initialized");
     }
+    
+    // Backpressure: Bounded Queue
+    // Wait for the worker if there are too many frames in-flight (max 10).
+    while (this.pendingFrames >= this.MAX_QUEUE_SIZE) {
+      if (!this.frameAckPromise) {
+        this.frameAckPromise = new Promise<void>((resolve, reject) => {
+          this.resolveFrameAck = resolve;
+          // Safety timeout to prevent infinite stuck state
+          setTimeout(() => reject(new Error("Worker processing timeout (Queue stuck)")), 15000);
+        });
+      }
+      await this.frameAckPromise;
+    }
+    
+    this.pendingFrames++;
+
     this.worker.postMessage(
       { type: "FRAME", index: frameIndex, timestampMs, frame },
-      [frame]
+      [frame] // Zero-Copy Transfer
     );
   }
 
@@ -92,13 +115,32 @@ export abstract class WorkerEncoderAdapter implements VideoEncoderAdapter {
     this.donePromise = new Promise<Blob>((resolve, reject) => {
       this.resolveDone = resolve;
       this.rejectDone = reject;
-      this.worker?.postMessage({ type: "FINALIZE" });
+      
+      // Wait for any pending frames to clear out before finalizing
+      const checkFinalize = async () => {
+        while (this.pendingFrames > 0) {
+          if (!this.frameAckPromise) {
+            this.frameAckPromise = new Promise<void>((res) => {
+              this.resolveFrameAck = res;
+            });
+          }
+          await this.frameAckPromise;
+        }
+        this.worker?.postMessage({ type: "FINALIZE" });
+      };
+      
+      checkFinalize().catch(reject);
     });
     return this.donePromise;
   }
 
   async cancel(): Promise<void> {
     this.terminated = true;
+    
+    this.resolveFrameAck?.();
+    this.resolveFrameAck = null;
+    this.frameAckPromise = null;
+    
     if (this.worker) {
       try {
         this.worker.postMessage({ type: "CANCEL" });
@@ -134,6 +176,15 @@ export abstract class WorkerEncoderAdapter implements VideoEncoderAdapter {
         break;
       }
       case "PROGRESS": {
+        this.pendingFrames = Math.max(0, this.pendingFrames - 1);
+        
+        // Wake up Main Thread if the queue has space
+        if (this.pendingFrames < this.MAX_QUEUE_SIZE) {
+          this.resolveFrameAck?.();
+          this.resolveFrameAck = null;
+          this.frameAckPromise = null;
+        }
+        
         if (this.onProgress && this.settings) {
           const total = Math.round(this.settings.fps * this.settings.duration);
           this.onProgress({
@@ -155,6 +206,7 @@ export abstract class WorkerEncoderAdapter implements VideoEncoderAdapter {
       }
     }
   }
+
 
   private fail(error: Error) {
     this.initReject?.(error);

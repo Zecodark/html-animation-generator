@@ -238,6 +238,7 @@ class WebmRenderer implements Renderer {
         bitrate,
         framerate: fps,
         latencyMode: "quality",
+        alpha: this.bg === null ? "keep" : "discard",
       };
       try {
         const support = await VideoEncoder.isConfigSupported(candidate);

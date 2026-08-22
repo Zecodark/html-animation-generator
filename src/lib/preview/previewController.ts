@@ -86,6 +86,8 @@ export class PreviewController {
     this.post({ type: "SET_TIME", time });
   }
 
+  private lastRenderOptions: any = null;
+
   startRender(options: {
     width: number;
     height: number;
@@ -102,6 +104,7 @@ export class PreviewController {
     panX?: number;
     panY?: number;
   }) {
+    this.lastRenderOptions = options;
     // Resize the iframe viewport to the SOURCE canvas during render so
     // viewport-relative units (vw/vh) in user content resolve deterministically.
     this.resizeIframeForRender(options.sourceWidth, options.sourceHeight);
@@ -124,7 +127,59 @@ export class PreviewController {
     });
   }
 
+  async reloadMemory(): Promise<void> {
+    if (!this.iframe || this.destroyed) return;
+    
+    // Clear any pending frame request
+    if (this.pendingFrame) {
+      this.pendingFrame.reject(new Error("Iframe reloading to clear memory"));
+      this.pendingFrame = null;
+      this.resolvePendingFrame = null;
+    }
+
+    this.readyPromise = new Promise<PreviewReadyInfo>((resolve, reject) => {
+      this.resolveReady = resolve;
+      
+      const timeout = setTimeout(() => {
+        reject(new Error("Preview did not become ready after memory reload"));
+      }, 15_000);
+      
+      const originalResolve = resolve;
+      this.resolveReady = (info) => {
+        clearTimeout(timeout);
+        originalResolve(info);
+      };
+      
+      try {
+        // Trigger reload on the iframe. For srcdoc, this reconstructs the document.
+        // If contentWindow isn't accessible, we can temporarily reset srcdoc.
+        const win = this.iframe?.contentWindow;
+        if (win) {
+          win.location.reload();
+        } else if (this.iframe) {
+          const doc = this.iframe.srcdoc;
+          this.iframe.srcdoc = "";
+          setTimeout(() => {
+            if (this.iframe) this.iframe.srcdoc = doc;
+          }, 10);
+        }
+      } catch (e) {
+        reject(e);
+      }
+    });
+
+    await this.readyPromise;
+
+    // Re-apply render mode
+    if (this.lastRenderOptions) {
+      this.startRender(this.lastRenderOptions);
+      // Wait a tiny bit for the new iframe's driver to process RENDER_START
+      await new Promise(r => setTimeout(r, 50));
+    }
+  }
+
   endRender() {
+    this.lastRenderOptions = null;
     this.post({ type: "RENDER_END" });
     this.restoreIframeAfterRender();
   }

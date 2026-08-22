@@ -68,14 +68,18 @@ async function ensureFfmpeg() {
 
 async function addFrame(frame: ImageBitmap, index: number) {
   if (!ffmpeg) throw new Error("FFmpeg not initialized");
+  
   const canvas = new OffscreenCanvas(frame.width, frame.height);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not acquire 2D context");
+  
   ctx.clearRect(0, 0, frame.width, frame.height);
   ctx.drawImage(frame, 0, 0);
+  
   const blob = await canvas.convertToBlob({ type: "image/png" });
   const name = `frame_${String(index).padStart(5, "0")}.png`;
   const bytes = new Uint8Array(await blob.arrayBuffer());
+  
   await ffmpeg.writeFile(name, bytes);
   frameFiles.push(name);
   hasFrames = true;
@@ -277,6 +281,8 @@ self.addEventListener("message", (event: MessageEvent) => {
 
   switch (data.type) {
     case "INIT": {
+      cleanup();
+      hasFrames = false;
       cancelled = false;
       chain = Promise.resolve();
       settings = data.settings;
@@ -300,6 +306,7 @@ self.addEventListener("message", (event: MessageEvent) => {
       if (!initialized || cancelled) return;
       chain = chain
         .then(() => addFrame(data.frame, data.index))
+        .then(() => post({ type: "PROGRESS", index: data.index }))
         .catch((error) => post({ type: "ERROR", message: String(error?.message ?? error) }));
       break;
     }

@@ -9,7 +9,7 @@ import { compileTsx } from "@/lib/tsx-preview/tsxCompiler";
 import { buildTsxDocument } from "@/lib/tsx-preview/tsxDocumentBuilder";
 import { PreviewController, type PreviewReadyInfo } from "@/lib/preview/previewController";
 import { AnimationController } from "@/lib/renderer/AnimationController";
-import { PreviewFrameCapture } from "@/lib/renderer/FrameCapture";
+import { TsxFrameCapture } from "@/lib/renderer/TsxFrameCapture";
 
 export function useTsxPreview() {
   const tsx = useTsxEditorStore((state) => state.tsx);
@@ -25,7 +25,7 @@ export function useTsxPreview() {
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const controllerRef = useRef<PreviewController | null>(null);
-  const frameCaptureRef = useRef<PreviewFrameCapture | null>(null);
+  const frameCaptureRef = useRef<TsxFrameCapture | null>(null);
   const animationRef = useRef<AnimationController | null>(null);
 
   const [readyInfo, setReadyInfo] = useState<PreviewReadyInfo | null>(null);
@@ -83,7 +83,7 @@ export function useTsxPreview() {
   useEffect(() => {
     const controller = new PreviewController();
     controller.onError = (message) => setPreviewError(message);
-    const frameCapture = new PreviewFrameCapture();
+    const frameCapture = new TsxFrameCapture();
     frameCapture.setController(controller);
     controllerRef.current = controller;
     frameCaptureRef.current = frameCapture;

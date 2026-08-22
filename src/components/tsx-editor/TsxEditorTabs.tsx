@@ -41,6 +41,44 @@ export function TsxEditorTabs() {
           </button>
         );
       })}
+      
+      <div className="h-4 w-px bg-zinc-800 mx-1" />
+      
+      <label className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 transition-all cursor-pointer">
+        <input
+          type="file"
+          accept=".tsx,.ts,.jsx,.js,.txt"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const content = event.target?.result as string;
+              if (content) {
+                useTsxEditorStore.getState().setCode(useTsxEditorStore.getState().activeTab, content);
+              }
+            };
+            reader.readAsText(file);
+            e.target.value = "";
+          }}
+          className="hidden"
+        />
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Import
+      </label>
 
       {/* Compile error indicator */}
       {compileError && (

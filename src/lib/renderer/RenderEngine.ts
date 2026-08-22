@@ -48,7 +48,7 @@ export class RenderCancelledError extends Error {
 }
 
 /**
- * Deterministic render loop:
+ * Deterministic render loop (HTML-only, stable pipeline):
  *
  *   for frame in 0..totalFrames:
  *     time = frame / fps

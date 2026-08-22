@@ -1,4 +1,4 @@
-import { buildDriverSource } from "../preview/driver";
+import { buildTsxDriverSource } from "./tsxDriver";
 import { encodeBase64 } from "../preview/documentBuilder";
 
 export interface BuildTsxDocumentInput {
@@ -88,7 +88,7 @@ export function buildTsxDocument(input: BuildTsxDocumentInput): string {
   const userJsB64 = encodeBase64(compiledJs);
 
   const prelude = buildPreludeSource();
-  const driver = buildDriverSource();
+  const driver = buildTsxDriverSource();
 
   return `<!DOCTYPE html>
 <html lang="en">
